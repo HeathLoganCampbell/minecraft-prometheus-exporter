@@ -1,10 +1,15 @@
 package de.sldk.mc.metrics;
 
+import com.google.common.collect.Maps;
 import io.prometheus.client.Gauge;
+import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-public class PlayersOnlineTotal extends WorldMetric {
+import java.util.Map;
+
+public class PlayersOnlineTotal extends Metric {
 
     private static final Gauge PLAYERS_ONLINE = Gauge.build()
             .name(prefix("players_online_total"))
@@ -16,8 +21,28 @@ public class PlayersOnlineTotal extends WorldMetric {
         super(plugin, PLAYERS_ONLINE);
     }
 
+
     @Override
-    protected void collect(World world) {
-        PLAYERS_ONLINE.labels(world.getName()).set(world.getPlayers().size());
+    public final void doCollect() {
+        collect();
+    }
+
+    public void collect()
+    {
+        //Scan all online players, so we don't count ncp's as players
+        Map<String, Integer> playerCountPerWorld = Maps.newHashMap();
+        for (Player onlinePlayer : Bukkit.getOnlinePlayers())
+        {
+            String worldName = onlinePlayer.getWorld().getName();
+            Integer playerCount = playerCountPerWorld.getOrDefault(worldName, 0);
+
+            playerCount++;
+
+            playerCountPerWorld.put(worldName, playerCount);
+        }
+
+        playerCountPerWorld.forEach((worldName, playerCount) -> {
+            PLAYERS_ONLINE.labels(worldName).set(playerCount);
+        });
     }
 }
